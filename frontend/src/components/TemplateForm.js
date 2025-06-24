@@ -14,18 +14,6 @@ const TemplateForm = () => {
   
   const { register, handleSubmit, setValue, formState: { errors } } = useForm();
 
-  // Load templates on mount
-  useEffect(() => {
-    loadTemplates();
-  }, []);
-
-  // Load template fields when template changes
-  useEffect(() => {
-    if (selectedTemplate) {
-      loadTemplateFields(selectedTemplate);
-    }
-  }, [selectedTemplate, loadTemplateFields]);
-
   const loadTemplates = async () => {
     try {
       const response = await apiClient.get('/api/contracts/templates');
@@ -50,6 +38,18 @@ const TemplateForm = () => {
       toast.error('Lỗi khi tải template fields');
     }
   }, [setValue]);
+
+  // Load templates on mount
+  useEffect(() => {
+    loadTemplates();
+  }, []);
+
+  // Load template fields when template changes
+  useEffect(() => {
+    if (selectedTemplate) {
+      loadTemplateFields(selectedTemplate);
+    }
+  }, [selectedTemplate, loadTemplateFields]);
 
   const handlePreview = async (data) => {
     try {
