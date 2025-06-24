@@ -1,319 +1,296 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
-import { Eye, Code, Copy, Download } from 'lucide-react';
+import { Upload, Eye, Download, FileText, AlertCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
 import apiClient from '../config/api';
 
-const TemplateForm = () => {
-  const [templates, setTemplates] = useState([]);
-  const [selectedTemplate, setSelectedTemplate] = useState('');
-  const [templateFields, setTemplateFields] = useState([]);
+const SimpleContractForm = () => {
+  const [uploadedTemplate, setUploadedTemplate] = useState(null);
+  const [placeholders, setPlaceholders] = useState([]);
   const [preview, setPreview] = useState('');
   const [showPreview, setShowPreview] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   
-  const { register, handleSubmit, setValue, formState: { errors } } = useForm();
+  const { register, handleSubmit, reset, formState: { errors } } = useForm();
 
-  const loadTemplates = async () => {
+  // Handle file upload
+  const handleFileUpload = async (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    // Validate file type
+    const allowedTypes = [
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'text/plain'
+    ];
+    
+    if (!allowedTypes.includes(file.type)) {
+      toast.error('Chỉ hỗ trợ file .docx và .txt');
+      return;
+    }
+
+    setIsUploading(true);
+    const formData = new FormData();
+    formData.append('template', file);
+
     try {
-      const response = await apiClient.get('/api/contracts/templates');
-      setTemplates(response.data.data);
+      const response = await apiClient.post('/api/contracts/upload', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+
+      if (response.data.success) {
+        setUploadedTemplate(response.data.data);
+        setPlaceholders(response.data.data.placeholders);
+        toast.success('Upload thành công!');
+        reset(); // Reset form when new template uploaded
+      }
     } catch (error) {
-      toast.error('Lỗi khi tải danh sách templates');
+      console.error('Upload error:', error);
+      toast.error('Lỗi khi upload file');
+    } finally {
+      setIsUploading(false);
     }
   };
 
-  const loadTemplateFields = useCallback(async (templateId) => {
-    try {
-      const response = await apiClient.get(`/api/contracts/templates/${templateId}`);
-      setTemplateFields(response.data.data.fields);
-      
-      // Set default values
-      response.data.data.fields.forEach(field => {
-        if (field.default) {
-          setValue(field.key, field.default);
-        }
-      });
-    } catch (error) {
-      toast.error('Lỗi khi tải template fields');
+  // Handle form submission to preview
+  const handlePreview = async (formData) => {
+    if (!uploadedTemplate) {
+      toast.error('Vui lòng upload template trước');
+      return;
     }
-  }, [setValue]);
 
-  // Load templates on mount
-  useEffect(() => {
-    loadTemplates();
-  }, []);
-
-  // Load template fields when template changes
-  useEffect(() => {
-    if (selectedTemplate) {
-      loadTemplateFields(selectedTemplate);
-    }
-  }, [selectedTemplate, loadTemplateFields]);
-
-  const handlePreview = async (data) => {
     try {
       const response = await apiClient.post('/api/contracts/preview', {
-        template: selectedTemplate,
-        ...data
+        templateId: uploadedTemplate.templateId,
+        ...formData
       });
-      setPreview(response.data.data.content);
-      setShowPreview(true);
+
+      if (response.data.success) {
+        setPreview(response.data.data.content);
+        setShowPreview(true);
+        toast.success('Preview được tạo thành công!');
+      }
     } catch (error) {
+      console.error('Preview error:', error);
       toast.error('Lỗi khi tạo preview');
     }
   };
 
-  const handleGeneratePDF = async (data) => {
-    if (!selectedTemplate) {
-      toast.error('Vui lòng chọn mẫu hợp đồng');
+  // Handle PDF generation
+  const handleGeneratePDF = async (formData) => {
+    if (!uploadedTemplate) {
+      toast.error('Vui lòng upload template trước');
       return;
     }
 
     setIsGenerating(true);
     try {
       const response = await apiClient.post('/api/contracts/generate', {
-        template: selectedTemplate,
-        ...data
+        templateId: uploadedTemplate.templateId,
+        ...formData
       }, {
         responseType: 'blob'
       });
 
-      const url = window.URL.createObjectURL(new Blob([response.data]));
-      const link = document.createElement('a');
-      link.href = url;
-      link.setAttribute('download', `hop-dong-${selectedTemplate}-${Date.now()}.pdf`);
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      window.URL.revokeObjectURL(url);
-
-      toast.success('Hợp đồng đã được tạo thành công!');
+      // Check if response is PDF or JSON
+      if (response.headers['content-type'] === 'application/pdf') {
+        // Download PDF
+        const url = window.URL.createObjectURL(new Blob([response.data]));
+        const link = document.createElement('a');
+        link.href = url;
+        link.setAttribute('download', `hop-dong-${uploadedTemplate.templateId}-${Date.now()}.pdf`);
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        window.URL.revokeObjectURL(url);
+        toast.success('PDF được tạo thành công!');
+      } else {
+        // Handle fallback text response
+        const text = await response.data.text();
+        const data = JSON.parse(text);
+        console.log('Fallback response:', data);
+        toast.info('Trả về nội dung text thay vì PDF');
+      }
     } catch (error) {
-      console.error('Error generating contract:', error);
-      toast.error('Có lỗi xảy ra khi tạo hợp đồng');
+      console.error('Generation error:', error);
+      toast.error('Lỗi khi tạo hợp đồng');
     } finally {
       setIsGenerating(false);
     }
   };
 
-  const copyPreview = () => {
-    navigator.clipboard.writeText(preview);
-    toast.success('Đã copy nội dung!');
-  };
-
-  const renderField = (field) => {
-    const commonProps = {
-      ...register(field.key, { required: field.required }),
-      className: "form-input",
-      placeholder: field.label
-    };
-
-    switch (field.type) {
-      case 'textarea':
-        return (
-          <textarea
-            {...commonProps}
-            rows="3"
-          />
-        );
-      
-      case 'select':
-        return (
-          <select {...commonProps}>
-            <option value="">Chọn {field.label}</option>
-            {field.options?.map(option => (
-              <option key={option} value={option}>{option}</option>
-            ))}
-          </select>
-        );
-      
-      case 'date':
-        return (
-          <input
-            {...commonProps}
-            type="date"
-          />
-        );
-      
-      case 'number':
-        return (
-          <input
-            {...commonProps}
-            type="number"
-            min="0"
-            step="0.01"
-          />
-        );
-      
-      default:
-        return (
-          <input
-            {...commonProps}
-            type="text"
-          />
-        );
-    }
-  };
-
   return (
-    <div className="max-w-6xl mx-auto">
+    <div className="max-w-4xl mx-auto p-6">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">Tạo hợp đồng với Template System</h1>
-        <p className="text-gray-600">Chọn template và điền thông tin để tạo hợp đồng tự động</p>
+        <h1 className="text-3xl font-bold text-gray-900 mb-2">
+          Tạo hợp đồng đơn giản
+        </h1>
+        <p className="text-gray-600">
+          Upload file hợp đồng mẫu (.docx/.txt), điền thông tin và tạo hợp đồng
+        </p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {/* Form Panel */}
-        <div className="space-y-6">
-          {/* Template Selection */}
-          <div className="card">
-            <h2 className="text-xl font-semibold text-gray-900 mb-4">Chọn mẫu hợp đồng</h2>
-            <div className="space-y-3">
-              {templates.map((template) => (
-                <label
-                  key={template.id}
-                  className={`block border rounded-lg p-4 cursor-pointer transition-all ${
-                    selectedTemplate === template.id
-                      ? 'border-primary-500 bg-primary-50'
-                      : 'border-gray-200 hover:border-gray-300'
-                  }`}
-                >
-                  <input
-                    type="radio"
-                    value={template.id}
-                    checked={selectedTemplate === template.id}
-                    onChange={(e) => setSelectedTemplate(e.target.value)}
-                    className="sr-only"
-                  />
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h3 className="font-medium text-gray-900">{template.title}</h3>
-                      <p className="text-sm text-gray-600">{template.fieldCount} trường cần điền</p>
-                    </div>
-                    <div className={`w-4 h-4 rounded-full border-2 ${
-                      selectedTemplate === template.id
-                        ? 'border-primary-500 bg-primary-500'
-                        : 'border-gray-300'
-                    }`}>
-                      {selectedTemplate === template.id && (
-                        <div className="w-2 h-2 bg-white rounded-full mx-auto mt-0.5"></div>
-                      )}
-                    </div>
-                  </div>
-                </label>
-              ))}
+      {/* File Upload Section */}
+      <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+        <h2 className="text-xl font-semibold mb-4 flex items-center">
+          <Upload className="w-5 h-5 mr-2" />
+          Bước 1: Upload file hợp đồng mẫu
+        </h2>
+        
+        <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
+          <input
+            type="file"
+            accept=".docx,.txt"
+            onChange={handleFileUpload}
+            className="hidden"
+            id="file-upload"
+            disabled={isUploading}
+          />
+          <label
+            htmlFor="file-upload"
+            className={`cursor-pointer flex flex-col items-center ${
+              isUploading ? 'opacity-50' : ''
+            }`}
+          >
+            <FileText className="w-12 h-12 text-gray-400 mb-4" />
+            {isUploading ? (
+              <div className="flex items-center">
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600 mr-2"></div>
+                <span>Đang upload...</span>
+              </div>
+            ) : (
+              <>
+                <span className="text-lg font-medium text-gray-900 mb-2">
+                  Chọn file hợp đồng mẫu
+                </span>
+                <span className="text-sm text-gray-500">
+                  Hỗ trợ file .docx và .txt
+                </span>
+              </>
+            )}
+          </label>
+        </div>
+
+        {uploadedTemplate && (
+          <div className="mt-4 p-4 bg-green-50 border border-green-200 rounded-lg">
+            <div className="flex items-center">
+              <FileText className="w-5 h-5 text-green-600 mr-2" />
+              <div>
+                <p className="font-medium text-green-800">
+                  {uploadedTemplate.originalName}
+                </p>
+                <p className="text-sm text-green-600">
+                  Tìm thấy {placeholders.length} trường cần điền
+                </p>
+              </div>
             </div>
           </div>
+        )}
+      </div>
 
-          {/* Template Fields */}
-          {templateFields.length > 0 && (
-            <form className="space-y-6">
-              <div className="card">
-                <h2 className="text-xl font-semibold text-gray-900 mb-4">Thông tin hợp đồng</h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {templateFields.map((field) => (
-                    <div key={field.key} className={field.type === 'textarea' ? 'md:col-span-2' : ''}>
-                      <label className="form-label">
-                        {field.label} {field.required && <span className="text-red-500">*</span>}
-                      </label>
-                      {renderField(field)}
-                      {errors[field.key] && (
-                        <p className="text-red-500 text-sm mt-1">
-                          {field.label} là bắt buộc
-                        </p>
-                      )}
-                    </div>
+      {/* Form Section */}
+      {placeholders.length > 0 && (
+        <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+          <h2 className="text-xl font-semibold mb-4">
+            Bước 2: Điền thông tin vào các trường
+          </h2>
+          
+          <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded">
+            <div className="flex items-start">
+              <AlertCircle className="w-5 h-5 text-blue-600 mr-2 mt-0.5" />
+              <div>
+                <p className="text-sm text-blue-800">
+                  <strong>Các trường được tìm thấy:</strong>
+                </p>
+                <div className="flex flex-wrap gap-2 mt-2">
+                  {placeholders.map((placeholder, index) => (
+                    <span
+                      key={index}
+                      className="inline-block bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded"
+                    >
+                      [{placeholder}]
+                    </span>
                   ))}
                 </div>
               </div>
+            </div>
+          </div>
 
-              {/* Action Buttons */}
-              <div className="flex flex-wrap gap-4">
-                <button
-                  type="button"
-                  onClick={handleSubmit(handlePreview)}
-                  className="flex items-center space-x-2 btn-secondary"
-                >
-                  <Eye className="w-4 h-4" />
-                  <span>Xem trước</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={handleSubmit(handleGeneratePDF)}
-                  disabled={isGenerating}
-                  className="flex items-center space-x-2 btn-primary disabled:opacity-50"
-                >
-                  {isGenerating ? (
-                    <>
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                      <span>Đang tạo...</span>
-                    </>
-                  ) : (
-                    <>
-                      <Download className="w-4 h-4" />
-                      <span>Tạo PDF</span>
-                    </>
-                  )}
-                </button>
-              </div>
-            </form>
-          )}
-        </div>
-
-        {/* Preview Panel */}
-        <div className="space-y-6">
-          {showPreview && (
-            <div className="card">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-xl font-semibold text-gray-900">Xem trước nội dung</h2>
-                <div className="flex space-x-2">
-                  <button
-                    onClick={copyPreview}
-                    className="flex items-center space-x-1 text-sm btn-secondary"
-                  >
-                    <Copy className="w-4 h-4" />
-                    <span>Copy</span>
-                  </button>
-                  <button
-                    onClick={() => setShowPreview(false)}
-                    className="text-sm btn-secondary"
-                  >
-                    Ẩn
-                  </button>
+          <form className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {placeholders.map((placeholder, index) => (
+                <div key={index}>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    {placeholder}
+                  </label>
+                  <input
+                    type="text"
+                    {...register(placeholder)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    placeholder={`Nhập ${placeholder.toLowerCase()}`}
+                  />
                 </div>
-              </div>
-              <div className="bg-gray-50 rounded-lg p-4 max-h-96 overflow-y-auto">
-                <pre className="text-sm text-gray-800 whitespace-pre-wrap font-mono">
-                  {preview}
-                </pre>
-              </div>
+              ))}
             </div>
-          )}
 
-          {/* Template Fields Reference */}
-          {templateFields.length > 0 && (
-            <div className="card">
-              <h2 className="text-xl font-semibold text-gray-900 mb-4">
-                <Code className="w-5 h-5 inline mr-2" />
-                Template Fields Reference
-              </h2>
-              <div className="space-y-2 max-h-64 overflow-y-auto">
-                {templateFields.map((field) => (
-                  <div key={field.key} className="flex justify-between items-center py-2 border-b border-gray-100">
-                    <span className="text-sm font-mono bg-gray-100 px-2 py-1 rounded">
-                      {`{{${field.key}}}`}
-                    </span>
-                    <span className="text-sm text-gray-600">{field.label}</span>
-                  </div>
-                ))}
-              </div>
+            <div className="flex flex-wrap gap-4 pt-4">
+              <button
+                type="button"
+                onClick={handleSubmit(handlePreview)}
+                className="flex items-center px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 transition-colors"
+              >
+                <Eye className="w-4 h-4 mr-2" />
+                Xem trước
+              </button>
+              
+              <button
+                type="button"
+                onClick={handleSubmit(handleGeneratePDF)}
+                disabled={isGenerating}
+                className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 transition-colors"
+              >
+                {isGenerating ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                    Đang tạo...
+                  </>
+                ) : (
+                  <>
+                    <Download className="w-4 h-4 mr-2" />
+                    Tạo PDF
+                  </>
+                )}
+              </button>
             </div>
-          )}
+          </form>
         </div>
-      </div>
+      )}
+
+      {/* Preview Section */}
+      {showPreview && (
+        <div className="bg-white rounded-lg shadow-md p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-semibold">Xem trước nội dung</h2>
+            <button
+              onClick={() => setShowPreview(false)}
+              className="px-3 py-1 text-sm bg-gray-200 text-gray-700 rounded hover:bg-gray-300"
+            >
+              Ẩn
+            </button>
+          </div>
+          
+          <div className="bg-gray-50 rounded-lg p-4 max-h-96 overflow-y-auto">
+            <pre className="text-sm text-gray-800 whitespace-pre-wrap font-mono">
+              {preview}
+            </pre>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
 
-export default TemplateForm; 
+export default SimpleContractForm; 
