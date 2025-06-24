@@ -24,16 +24,15 @@ router.post('/generate', async (req, res) => {
       });
     }
 
-    // Generate PDF
-    const pdfBuffer = await quoteService.generateQuotePDF(quoteData);
+    // Generate quote content (simplified)
+    const quoteResult = await quoteService.generateQuotePDF(quoteData);
 
-    // Set response headers
-    res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', 'attachment; filename="bao-gia.pdf"');
-    res.setHeader('Content-Length', pdfBuffer.length);
-
-    // Send PDF buffer
-    res.send(pdfBuffer);
+    // Return JSON response with quote content
+    res.json({
+      success: true,
+      message: 'Báo giá được tạo thành công',
+      data: quoteResult
+    });
 
   } catch (error) {
     console.error('Error generating quote:', error);

@@ -71,21 +71,25 @@ const QuotePage = () => {
       const response = await apiClient.post('/api/quotes/generate', {
         ...data,
         totals: { subtotal, vatAmount, total }
-      }, {
-        responseType: 'blob'
       });
 
-      // Tạo URL để download file PDF
-      const url = window.URL.createObjectURL(new Blob([response.data]));
-      const link = document.createElement('a');
-      link.href = url;
-      link.setAttribute('download', `bao-gia-${Date.now()}.pdf`);
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      window.URL.revokeObjectURL(url);
+      if (response.data.success) {
+        // Create and download text file
+        const content = response.data.data.content;
+        const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.setAttribute('download', `bao-gia-${Date.now()}.txt`);
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        window.URL.revokeObjectURL(url);
 
-      toast.success('Báo giá đã được tạo thành công!');
+        toast.success('Báo giá đã được tạo thành công!');
+      } else {
+        toast.error('Lỗi khi tạo báo giá');
+      }
     } catch (error) {
       console.error('Error generating quote:', error);
       toast.error('Có lỗi xảy ra khi tạo báo giá');
@@ -387,7 +391,7 @@ const QuotePage = () => {
             ) : (
               <>
                 <Download className="w-5 h-5" />
-                <span>Tạo báo giá PDF</span>
+                <span>Tạo báo giá</span>
               </>
             )}
           </button>
