@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useForm } from 'react-hook-form';
 import { Eye, Code, Copy, Download } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -12,7 +12,7 @@ const TemplateForm = () => {
   const [showPreview, setShowPreview] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   
-  const { register, handleSubmit, watch, setValue, formState: { errors } } = useForm();
+  const { register, handleSubmit, setValue, formState: { errors } } = useForm();
 
   // Load templates on mount
   useEffect(() => {
@@ -24,7 +24,7 @@ const TemplateForm = () => {
     if (selectedTemplate) {
       loadTemplateFields(selectedTemplate);
     }
-  }, [selectedTemplate]);
+  }, [selectedTemplate, loadTemplateFields]);
 
   const loadTemplates = async () => {
     try {
@@ -35,7 +35,7 @@ const TemplateForm = () => {
     }
   };
 
-  const loadTemplateFields = async (templateId) => {
+  const loadTemplateFields = useCallback(async (templateId) => {
     try {
       const response = await apiClient.get(`/api/contracts/templates/${templateId}`);
       setTemplateFields(response.data.data.fields);
@@ -49,7 +49,7 @@ const TemplateForm = () => {
     } catch (error) {
       toast.error('Lỗi khi tải template fields');
     }
-  };
+  }, [setValue]);
 
   const handlePreview = async (data) => {
     try {
