@@ -12,7 +12,7 @@ const SimpleContractForm = () => {
   const [isUploading, setIsUploading] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   
-  const { register, handleSubmit, reset, formState: { errors } } = useForm();
+  const { register, handleSubmit, reset } = useForm();
 
   // Handle file upload
   const handleFileUpload = async (event) => {
