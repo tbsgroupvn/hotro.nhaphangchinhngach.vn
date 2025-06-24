@@ -72,7 +72,6 @@ const LabelPage = () => {
   };
 
   const calculateLabelsPerPage = () => {
-    const pageSize = size === 'a4' ? { width: 210, height: 297 } : { width: 100, height: 150 };
     return rows * cols;
   };
 

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
-import { Upload, Download, FileText } from 'lucide-react';
+import { Download } from 'lucide-react';
 import toast from 'react-hot-toast';
 import axios from 'axios';
 

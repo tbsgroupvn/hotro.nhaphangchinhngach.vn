@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useForm, useFieldArray } from 'react-hook-form';
-import { Plus, Trash2, Download, Receipt, Calculator } from 'lucide-react';
+import { Plus, Trash2, Download, Calculator } from 'lucide-react';
 import toast from 'react-hot-toast';
 import axios from 'axios';
 
@@ -56,12 +56,7 @@ const PaymentPage = () => {
   const watchedItems = watch('items');
   const paymentType = watch('paymentType');
 
-  const paymentTypes = [
-    { id: 'purchase', name: 'Thanh toán mua hàng', description: 'Thanh toán cho nhà cung cấp' },
-    { id: 'service', name: 'Thanh toán dịch vụ', description: 'Thanh toán phí dịch vụ' },
-    { id: 'expense', name: 'Thanh toán chi phí', description: 'Thanh toán các khoản chi phí khác' },
-    { id: 'advance', name: 'Tạm ứng', description: 'Phiếu tạm ứng cho nhân viên' },
-  ];
+
 
   // Tính tổng tiền
   const calculateTotal = () => {
@@ -370,12 +365,7 @@ const PaymentPage = () => {
                     <label className="form-label">Số lượng</label>
                     <input
                       {...register(`items.${index}.quantity`, { 
-                        valueAsNumber: true,
-                        onChange: (e) => {
-                          const quantity = parseFloat(e.target.value) || 0;
-                          const unitPrice = watchedItems[index]?.unitPrice || 0;
-                          // Update amount automatically
-                        }
+                        valueAsNumber: true
                       })}
                       type="number"
                       min="0"
