@@ -1,8 +1,8 @@
 import React from 'react';
-import TemplateForm from '../components/TemplateForm';
+import SimpleContractForm from '../components/TemplateForm';
 
 const ContractPage = () => {
-  return <TemplateForm />;
+  return <SimpleContractForm />;
 };
 
 export default ContractPage; 
