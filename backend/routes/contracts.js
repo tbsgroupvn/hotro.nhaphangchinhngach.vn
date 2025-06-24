@@ -117,28 +117,28 @@ router.post('/generate', async (req, res) => {
     console.log('✅ Template found, generating contract...');
 
     try {
-      // Try to generate PDF
-      const pdfBuffer = await contractService.generateSimpleContract(templatePath, formData);
+      // Generate text content (simplified for Railway)
+      const result = await contractService.generateSimpleContract(templatePath, formData);
 
-      // Set response headers
-      res.setHeader('Content-Type', 'application/pdf');
-      res.setHeader('Content-Disposition', `attachment; filename="hop-dong-${templateId}-${Date.now()}.pdf"`);
-      res.setHeader('Content-Length', pdfBuffer.length);
+      console.log('✅ Contract generated successfully');
+      
+      res.json({
+        success: true,
+        type: 'text_contract',
+        message: 'Hợp đồng được tạo thành công',
+        data: result
+      });
 
-      console.log('✅ Contract PDF generated successfully');
-      // Send PDF buffer
-      res.send(pdfBuffer);
-
-    } catch (pdfError) {
-      // Fallback to text if PDF fails
-      console.log('⚠️ PDF generation failed, using fallback:', pdfError.message);
+    } catch (generateError) {
+      // Fallback
+      console.log('⚠️ Generation failed, using fallback:', generateError.message);
       
       const fallbackResult = await contractService.generateSimpleContractFallback(templatePath, formData);
       
       res.json({
         success: true,
         type: 'fallback_text',
-        message: 'Không thể tạo PDF, trả về nội dung text', 
+        message: 'Sử dụng fallback generation', 
         data: fallbackResult
       });
     }

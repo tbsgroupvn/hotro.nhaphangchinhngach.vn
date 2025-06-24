@@ -20,13 +20,8 @@ const SimpleContractForm = () => {
     if (!file) return;
 
     // Validate file type
-    const allowedTypes = [
-      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-      'text/plain'
-    ];
-    
-    if (!allowedTypes.includes(file.type)) {
-      toast.error('Chỉ hỗ trợ file .docx và .txt');
+    if (file.type !== 'text/plain') {
+      toast.error('Chỉ hỗ trợ file .txt');
       return;
     }
 
@@ -91,28 +86,30 @@ const SimpleContractForm = () => {
       const response = await apiClient.post('/api/contracts/generate', {
         templateId: uploadedTemplate.templateId,
         ...formData
-      }, {
-        responseType: 'blob'
       });
 
-      // Check if response is PDF or JSON
-      if (response.headers['content-type'] === 'application/pdf') {
-        // Download PDF
-        const url = window.URL.createObjectURL(new Blob([response.data]));
+      if (response.data.success) {
+        // Show contract content and download as text file
+        const content = response.data.data.content;
+        
+        // Create and download text file
+        const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+        const url = window.URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.href = url;
-        link.setAttribute('download', `hop-dong-${uploadedTemplate.templateId}-${Date.now()}.pdf`);
+        link.setAttribute('download', `hop-dong-${uploadedTemplate.templateId}-${Date.now()}.txt`);
         document.body.appendChild(link);
         link.click();
         link.remove();
         window.URL.revokeObjectURL(url);
-        toast.success('PDF được tạo thành công!');
+        
+        // Show in preview
+        setPreview(content);
+        setShowPreview(true);
+        
+        toast.success('Hợp đồng được tạo thành công!');
       } else {
-        // Handle fallback text response
-        const text = await response.data.text();
-        const data = JSON.parse(text);
-        console.log('Fallback response:', data);
-        toast.info('Trả về nội dung text thay vì PDF');
+        toast.error('Lỗi khi tạo hợp đồng');
       }
     } catch (error) {
       console.error('Generation error:', error);
@@ -129,7 +126,7 @@ const SimpleContractForm = () => {
           Tạo hợp đồng đơn giản
         </h1>
         <p className="text-gray-600">
-          Upload file hợp đồng mẫu (.docx/.txt), điền thông tin và tạo hợp đồng
+          Upload file hợp đồng mẫu (.txt), điền thông tin và tạo hợp đồng
         </p>
       </div>
 
@@ -143,7 +140,7 @@ const SimpleContractForm = () => {
         <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
           <input
             type="file"
-            accept=".docx,.txt"
+                         accept=".txt"
             onChange={handleFileUpload}
             className="hidden"
             id="file-upload"
@@ -166,9 +163,9 @@ const SimpleContractForm = () => {
                 <span className="text-lg font-medium text-gray-900 mb-2">
                   Chọn file hợp đồng mẫu
                 </span>
-                <span className="text-sm text-gray-500">
-                  Hỗ trợ file .docx và .txt
-                </span>
+                                 <span className="text-sm text-gray-500">
+                   Hỗ trợ file .txt
+                 </span>
               </>
             )}
           </label>
@@ -260,7 +257,7 @@ const SimpleContractForm = () => {
                 ) : (
                   <>
                     <Download className="w-4 h-4 mr-2" />
-                    Tạo PDF
+                    Tạo hợp đồng
                   </>
                 )}
               </button>

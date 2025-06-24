@@ -1,23 +1,6 @@
 const fs = require('fs');
 const path = require('path');
 const multer = require('multer');
-const mammoth = require('mammoth');
-const pdfMake = require('pdfmake/build/pdfmake');
-const pdfFonts = require('pdfmake/build/vfs_fonts');
-// Note: mammoth and multer are used in the functions below
-
-// Fix font configuration for Railway deployment
-try {
-  if (pdfFonts.pdfMake && pdfFonts.pdfMake.vfs) {
-    pdfMake.vfs = pdfFonts.pdfMake.vfs;
-  } else if (pdfFonts.vfs) {
-    pdfMake.vfs = pdfFonts.vfs;
-  } else {
-    console.warn('⚠️ pdfMake fonts not loaded properly, using basic configuration');
-  }
-} catch (fontError) {
-  console.warn('⚠️ Font configuration error:', fontError.message);
-}
 
 // Upload configuration
 const storage = multer.diskStorage({
@@ -38,17 +21,15 @@ const storage = multer.diskStorage({
 const upload = multer({
   storage: storage,
   fileFilter: (req, file, cb) => {
-    // Accept .docx and .pdf files
-    if (file.mimetype === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
-        file.mimetype === 'application/pdf' ||
-        file.mimetype === 'text/plain') {
+    // Accept .txt files for now (simple and reliable)
+    if (file.mimetype === 'text/plain') {
       cb(null, true);
     } else {
-      cb(new Error('Chỉ hỗ trợ file .docx, .pdf, .txt'));
+      cb(new Error('Hiện tại chỉ hỗ trợ file .txt'));
     }
   },
   limits: {
-    fileSize: 5 * 1024 * 1024 // 5MB limit
+    fileSize: 2 * 1024 * 1024 // 2MB limit
   }
 });
 
@@ -73,25 +54,18 @@ const extractPlaceholders = (text) => {
   return Array.from(placeholders);
 };
 
-// Process uploaded template file
+// Process uploaded template file (simple text only)
 const processTemplateFile = async (filePath) => {
   try {
-    const ext = path.extname(filePath).toLowerCase();
-    let text = '';
+    console.log('🔄 Processing template file:', filePath);
     
-    if (ext === '.docx') {
-      // Extract text from DOCX
-      const result = await mammoth.extractRawText({ path: filePath });
-      text = result.value;
-    } else if (ext === '.txt') {
-      // Read plain text
-      text = fs.readFileSync(filePath, 'utf8');
-    } else {
-      throw new Error('Định dạng file không được hỗ trợ');
-    }
+    // Read text file
+    const text = fs.readFileSync(filePath, 'utf8');
     
     // Extract placeholders
     const placeholders = extractPlaceholders(text);
+    
+    console.log('✅ Found placeholders:', placeholders);
     
     return {
       success: true,
@@ -101,7 +75,7 @@ const processTemplateFile = async (filePath) => {
     };
     
   } catch (error) {
-    console.error('Error processing template file:', error);
+    console.error('❌ Error processing template file:', error);
     throw error;
   }
 };
@@ -109,6 +83,8 @@ const processTemplateFile = async (filePath) => {
 // Replace placeholders in text
 const replacePlaceholders = (text, data) => {
   let result = text;
+  
+  console.log('🔄 Replacing placeholders with data:', Object.keys(data));
   
   // Replace different placeholder formats
   Object.keys(data).forEach(key => {
@@ -123,10 +99,10 @@ const replacePlaceholders = (text, data) => {
   return result;
 };
 
-// Generate contract from template
+// Generate simple text contract (no PDF for now)
 const generateSimpleContract = async (templatePath, data) => {
   try {
-    console.log('🔄 Generating simple contract from template:', templatePath);
+    console.log('🔄 Generating simple contract from:', templatePath);
     
     // Read template file
     const template = await processTemplateFile(templatePath);
@@ -134,51 +110,16 @@ const generateSimpleContract = async (templatePath, data) => {
     // Replace placeholders
     const content = replacePlaceholders(template.content, data);
     
-    // Create simple PDF
-    const docDefinition = {
-      content: [
-        {
-          text: 'HỢP ĐỒNG',
-          fontSize: 18,
-          bold: true,
-          alignment: 'center',
-          margin: [0, 0, 0, 20]
-        },
-        {
-          text: content,
-          fontSize: 12,
-          lineHeight: 1.5,
-          preserveLeadingSpaces: true
-        },
-        {
-          text: `\n\nNgày tạo: ${new Date().toLocaleDateString('vi-VN')}`,
-          fontSize: 10,
-          italics: true,
-          alignment: 'right',
-          margin: [0, 20, 0, 0]
-        }
-      ],
-      pageMargins: [40, 60, 40, 60]
+    console.log('✅ Contract content generated');
+    
+    // For now, return as plain text (Railway-friendly)
+    return {
+      success: true,
+      type: 'text_content',
+      content: content,
+      generatedAt: new Date().toLocaleString('vi-VN'),
+      message: 'Hợp đồng được tạo dưới dạng text'
     };
-
-    // Generate PDF
-    return new Promise((resolve, reject) => {
-      try {
-        const pdfDoc = pdfMake.createPdf(docDefinition);
-        pdfDoc.getBuffer((buffer) => {
-          if (buffer) {
-            console.log('✅ Simple contract PDF generated successfully');
-            resolve(buffer);
-          } else {
-            console.error('❌ Failed to generate PDF buffer');
-            reject(new Error('Failed to generate PDF buffer'));
-          }
-        });
-      } catch (pdfError) {
-        console.error('❌ PDFMake error:', pdfError);
-        reject(pdfError);
-      }
-    });
 
   } catch (error) {
     console.error('❌ Error in generateSimpleContract:', error);
@@ -186,7 +127,7 @@ const generateSimpleContract = async (templatePath, data) => {
   }
 };
 
-// Fallback: Return processed text if PDF fails
+// Fallback: Always return text content
 const generateSimpleContractFallback = async (templatePath, data) => {
   try {
     const template = await processTemplateFile(templatePath);
@@ -197,7 +138,8 @@ const generateSimpleContractFallback = async (templatePath, data) => {
       type: 'text_content',
       content: content,
       placeholders: template.placeholders,
-      message: 'PDF generation failed, returning text content'
+      generatedAt: new Date().toLocaleString('vi-VN'),
+      message: 'Hợp đồng text content'
     };
   } catch (error) {
     return {
@@ -205,41 +147,6 @@ const generateSimpleContractFallback = async (templatePath, data) => {
       error: error.message
     };
   }
-};
-
-const getContractTemplate = (templateType) => {
-  const templates = {
-    mua_ban: {
-      title: 'HỢP ĐỒNG MUA BÁN HÀNG HÓA',
-      specificClauses: []
-    },
-    van_chuyen: {
-      title: 'HỢP ĐỒNG VẬN CHUYỂN',
-      specificClauses: []
-    },
-    bao_hiem: {
-      title: 'HỢP ĐỒNG BẢO HIỂM',
-      specificClauses: []
-    },
-    dai_ly: {
-      title: 'HỢP ĐỒNG ĐẠI LÝ',
-      specificClauses: []
-    }
-  };
-
-  return templates[templateType] || templates.mua_ban;
-};
-
-const getPaymentTermsText = (paymentTerms) => {
-  const terms = {
-    prepaid: 'Trả trước 100%',
-    cod: 'Thanh toán khi giao hàng',
-    '30days': 'Thanh toán trong 30 ngày',
-    '60days': 'Thanh toán trong 60 ngày',
-    installment: 'Thanh toán theo đợt'
-  };
-
-  return terms[paymentTerms] || 'Theo thỏa thuận';
 };
 
 module.exports = {
