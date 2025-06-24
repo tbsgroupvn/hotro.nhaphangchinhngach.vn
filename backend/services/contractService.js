@@ -1,31 +1,70 @@
-// const pdfMake = require('pdfmake/build/pdfmake');
-// const pdfFonts = require('pdfmake/build/vfs_fonts');
+const pdfMake = require('pdfmake/build/pdfmake');
+const pdfFonts = require('pdfmake/build/vfs_fonts');
 const moment = require('moment');
+const templateService = require('./templateService');
 
-// Cấu hình fonts mặc định
-// pdfMake.vfs = pdfFonts.pdfMake.vfs;
+// Cấu hình fonts
+pdfMake.vfs = pdfFonts.pdfMake.vfs;
 
 const generateContractPDF = async (contractData) => {
   try {
-    const currentDate = moment().format('DD/MM/YYYY');
+    // Generate document using template service
+    const document = templateService.generateDocument(contractData.template, contractData);
     
-    // Test version - return simple JSON instead of PDF
-    const testResponse = {
-      success: true,
-      message: "Hợp đồng đã được tạo thành công (chế độ test)",
-      data: {
-        template: contractData.template,
-        partyA: contractData.partyA?.name,
-        partyB: contractData.partyB?.name,
-        contractValue: contractData.contractValue,
-        description: contractData.description,
-        generatedAt: currentDate,
-        note: "API hoạt động bình thường - PDF sẽ được tạo sau khi sửa font"
+    // Create PDF document definition
+    const docDefinition = {
+      content: [
+        {
+          text: document.title,
+          style: 'header',
+          alignment: 'center',
+          margin: [0, 0, 0, 20]
+        },
+        {
+          text: document.content,
+          style: 'content',
+          preserveLeadingSpaces: true
+        },
+        {
+          text: `\n\nTạo ngày: ${document.generatedAt}`,
+          style: 'footer',
+          alignment: 'right',
+          margin: [0, 20, 0, 0]
+        }
+      ],
+      styles: {
+        header: {
+          fontSize: 16,
+          bold: true,
+          color: '#2563eb'
+        },
+        content: {
+          fontSize: 11,
+          lineHeight: 1.4
+        },
+        footer: {
+          fontSize: 9,
+          italics: true,
+          color: '#666666'
+        }
+      },
+      pageMargins: [40, 60, 40, 60],
+      defaultStyle: {
+        font: 'Roboto'
       }
     };
-    
-    // Return simple buffer for testing
-    return Buffer.from(JSON.stringify(testResponse, null, 2));
+
+    // Generate PDF
+    return new Promise((resolve, reject) => {
+      const pdfDoc = pdfMake.createPdf(docDefinition);
+      pdfDoc.getBuffer((buffer) => {
+        if (buffer) {
+          resolve(buffer);
+        } else {
+          reject(new Error('Failed to generate PDF buffer'));
+        }
+      });
+    });
 
   } catch (error) {
     console.error('Error in generateContractPDF:', error);

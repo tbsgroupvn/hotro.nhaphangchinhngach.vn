@@ -40,7 +40,7 @@ app.use(compression());
 // CORS
 app.use(cors({
   origin: process.env.NODE_ENV === 'production' 
-    ? ['https://hotronhaphang.netlify.app', 'https://hotronhaphang.netlify.vn']
+    ? [process.env.CORS_ORIGINS || '*']
     : ['http://localhost:3000'],
   credentials: true
 }));

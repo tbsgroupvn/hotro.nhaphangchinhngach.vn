@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { Plus, Trash2, Download, Calculator } from 'lucide-react';
 import toast from 'react-hot-toast';
-import axios from 'axios';
+import apiClient from '../config/api';
 
 const PaymentPage = () => {
   const [isGenerating, setIsGenerating] = useState(false);
@@ -70,7 +70,7 @@ const PaymentPage = () => {
   const onSubmit = async (data) => {
     setIsGenerating(true);
     try {
-      const response = await axios.post('/api/payments/generate', data, {
+      const response = await apiClient.post('/api/payments/generate', data, {
         responseType: 'blob'
       });
 

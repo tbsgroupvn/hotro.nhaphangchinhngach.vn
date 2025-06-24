@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { Download, Tag, Settings } from 'lucide-react';
 import toast from 'react-hot-toast';
-import axios from 'axios';
+import apiClient from '../config/api';
 
 const LabelPage = () => {
   const [isGenerating, setIsGenerating] = useState(false);
@@ -49,7 +49,7 @@ const LabelPage = () => {
   const onSubmit = async (data) => {
     setIsGenerating(true);
     try {
-      const response = await axios.post('/api/labels/generate', data, {
+      const response = await apiClient.post('/api/labels/generate', data, {
         responseType: 'blob'
       });
 

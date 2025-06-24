@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const contractService = require('../services/contractService');
+const templateService = require('../services/templateService');
 
 // @route   POST /api/contracts/generate
 // @desc    Tạo hợp đồng PDF từ template DOCX
@@ -49,17 +50,85 @@ router.post('/generate', async (req, res) => {
 // @desc    Lấy danh sách mẫu hợp đồng
 // @access  Public
 router.get('/templates', (req, res) => {
-  const templates = [
-    { id: 'mua_ban', name: 'Hợp đồng mua bán hàng hóa', description: 'Dành cho giao dịch mua bán hàng hóa nhập khẩu' },
-    { id: 'van_chuyen', name: 'Hợp đồng vận chuyển', description: 'Dành cho dịch vụ vận chuyển hàng hóa' },
-    { id: 'bao_hiem', name: 'Hợp đồng bảo hiểm', description: 'Bảo hiểm hàng hóa nhập khẩu' },
-    { id: 'dai_ly', name: 'Hợp đồng đại lý', description: 'Hợp đồng đại lý phân phối' }
-  ];
+  try {
+    const templates = templateService.getAllTemplates();
+    res.json({
+      success: true,
+      data: templates
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Lỗi khi lấy danh sách templates',
+      error: error.message
+    });
+  }
+});
 
-  res.json({
-    success: true,
-    data: templates
-  });
+// @route   GET /api/contracts/templates/:templateId
+// @desc    Lấy chi tiết template và fields
+// @access  Public
+router.get('/templates/:templateId', (req, res) => {
+  try {
+    const { templateId } = req.params;
+    const template = templateService.getTemplate(templateId);
+    
+    if (!template) {
+      return res.status(404).json({
+        success: false,
+        message: 'Template không tồn tại'
+      });
+    }
+
+    res.json({
+      success: true,
+      data: {
+        id: templateId,
+        title: template.title,
+        fields: template.fields,
+        preview: template.content.substring(0, 500) + '...'
+      }
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Lỗi khi lấy template',
+      error: error.message
+    });
+  }
+});
+
+// @route   POST /api/contracts/preview
+// @desc    Preview hợp đồng trước khi tạo PDF
+// @access  Public
+router.post('/preview', (req, res) => {
+  try {
+    const { template, ...data } = req.body;
+    
+    if (!template) {
+      return res.status(400).json({
+        success: false,
+        message: 'Chưa chọn mẫu hợp đồng'
+      });
+    }
+
+    const document = templateService.generateDocument(template, data);
+    
+    res.json({
+      success: true,
+      data: {
+        title: document.title,
+        content: document.content,
+        generatedAt: document.generatedAt
+      }
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Lỗi khi tạo preview',
+      error: error.message
+    });
+  }
 });
 
 module.exports = router; 
