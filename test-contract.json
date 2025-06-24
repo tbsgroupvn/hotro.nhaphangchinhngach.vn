@@ -1,0 +1,17 @@
+{
+  "template": "mua_ban",
+  "partyA": {
+    "name": "Công ty ABC", 
+    "address": "123 Đường XYZ, Hà Nội",
+    "representative": "Nguyễn Văn A",
+    "phone": "0123456789"
+  },
+  "partyB": {
+    "name": "Công ty DEF",
+    "address": "456 Đường KLM, TP.HCM", 
+    "representative": "Trần Thị B",
+    "phone": "0987654321"
+  },
+  "contractValue": "1000000",
+  "description": "Mua bán hàng hóa nhập khẩu"
+} 
