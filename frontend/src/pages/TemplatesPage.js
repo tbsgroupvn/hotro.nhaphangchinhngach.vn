@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Upload, FileText, File, FileSpreadsheet, Trash2, Eye, Edit, Plus } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Upload, FileText, File, FileSpreadsheet, Trash2, Eye, Plus } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import toast from 'react-hot-toast';
 import api from '../config/api';
@@ -30,11 +30,7 @@ const TemplatesPage = () => {
     { value: 'excel', label: 'Excel (.xlsx/.xls)' }
   ];
 
-  useEffect(() => {
-    fetchTemplates();
-  }, [selectedCategory, selectedType]);
-
-  const fetchTemplates = async () => {
+  const fetchTemplates = useCallback(async () => {
     try {
       setLoading(true);
       const params = new URLSearchParams();
@@ -49,7 +45,11 @@ const TemplatesPage = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [selectedCategory, selectedType]);
+
+  useEffect(() => {
+    fetchTemplates();
+  }, [fetchTemplates]);
 
   const handleUpload = async (data) => {
     try {
@@ -59,7 +59,7 @@ const TemplatesPage = () => {
       formData.append('description', data.description || '');
       formData.append('category', data.category);
 
-      const response = await api.post('/templates/upload', formData, {
+      await api.post('/templates/upload', formData, {
         headers: {
           'Content-Type': 'multipart/form-data'
         }
