@@ -4,6 +4,21 @@ const contractService = require('../services/contractService');
 const path = require('path');
 const fs = require('fs');
 
+// @route   GET /api/contracts
+// @desc    Test contracts endpoint
+// @access  Public
+router.get('/', (req, res) => {
+  res.json({
+    success: true,
+    message: 'Contracts API is working',
+    endpoints: [
+      'POST /api/contracts/upload - Upload template',
+      'POST /api/contracts/generate - Tạo hợp đồng', 
+      'GET /api/contracts/templates - Danh sách templates'
+    ]
+  });
+});
+
 // @route   POST /api/contracts/upload
 // @desc    Upload contract template file
 // @access  Public

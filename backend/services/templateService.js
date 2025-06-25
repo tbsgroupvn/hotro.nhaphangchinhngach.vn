@@ -1,171 +1,96 @@
 const moment = require('moment');
+const fs = require('fs-extra');
+const path = require('path');
+const XLSX = require('xlsx');
+const pdfParse = require('pdf-parse');
+const mammoth = require('mammoth');
+const Template = require('../models/Template');
+
+// Đảm bảo thư mục uploads tồn tại
+const UPLOAD_DIR = path.join(__dirname, '../uploads');
+fs.ensureDirSync(UPLOAD_DIR);
 
 // Template định sẵn với replace fields
 const contractTemplates = {
-  mua_ban: {
-    title: 'HỢP ĐỒNG MUA BÁN HÀNG HÓA',
+  import_contract: {
+    title: "HỢP ĐỒNG NHẬP KHẨU HÀNG HÓA",
     content: `
-HỢP ĐỒNG MUA BÁN HÀNG HÓA
+CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM
+Độc lập - Tự do - Hạnh phúc
+
+HỢP ĐỒNG NHẬP KHẨU HÀNG HÓA
 Số: {{contractNumber}}
-Ngày ký: {{signDate}}
 
-Căn cứ vào Bộ luật dân sự nước Cộng hòa xã hội chủ nghĩa Việt Nam;
-Căn cứ vào nhu cầu và khả năng của các bên;
+Hôm nay, ngày {{contractDate}}, tại {{contractLocation}}, chúng tôi gồm:
 
-Hôm nay, ngày {{signDate}}, tại {{signLocation}}, chúng tôi gồm có:
+BÊN A (Bên mua): {{buyerName}}
+- Địa chỉ: {{buyerAddress}}
+- Điện thoại: {{buyerPhone}}
+- Email: {{buyerEmail}}
+- Mã số thuế: {{buyerTaxCode}}
 
-BÊN A (BÊN BÁN): {{partyA.name}}
-- Địa chỉ: {{partyA.address}}
-- Mã số thuế: {{partyA.taxCode}}
-- Người đại diện: {{partyA.representative}}
-- Chức vụ: {{partyA.position}}
-- Điện thoại: {{partyA.phone}}
-
-BÊN B (BÊN MUA): {{partyB.name}}
-- Địa chỉ: {{partyB.address}}
-- Mã số thuế: {{partyB.taxCode}}
-- Người đại diện: {{partyB.representative}}
-- Chức vụ: {{partyB.position}}
-- Điện thoại: {{partyB.phone}}
-
-Hai bên thống nhất ký kết hợp đồng với các điều khoản sau:
+BÊN B (Bên bán): {{sellerName}}
+- Địa chỉ: {{sellerAddress}}
+- Điện thoại: {{sellerPhone}}
+- Email: {{sellerEmail}}
+- Mã số thuế: {{sellerTaxCode}}
 
 ĐIỀU 1: ĐỐI TƯỢNG HỢP ĐỒNG
-Bên A cam kết bán và Bên B cam kết mua: {{description}}
+Hàng hóa: {{productName}}
+Xuất xứ: {{productOrigin}}
+Số lượng: {{quantity}}
+Đơn giá: {{unitPrice}}
+Tổng giá trị: {{totalValue}}
 
-ĐIỀU 2: GIÁ TRỊ HỢP ĐỒNG
-Tổng giá trị hợp đồng: {{contractValue}} {{currency}}
-Bằng chữ: {{contractValueInWords}}
+ĐIỀU 2: ĐIỀU KIỆN GIAO HÀNG
+Thời gian giao hàng: {{deliveryTime}}
+Địa điểm giao hàng: {{deliveryLocation}}
 
 ĐIỀU 3: ĐIỀU KIỆN THANH TOÁN
-{{paymentTerms}}
+Phương thức thanh toán: {{paymentMethod}}
+Thời hạn thanh toán: {{paymentTerm}}
 
-ĐIỀU 4: THỜI GIAN THỰC HIỆN
-Thời hạn thực hiện: {{duration}} ngày kể từ ngày ký hợp đồng
+Hợp đồng có hiệu lực từ ngày ký.
 
-ĐIỀU 5: TRÁCH NHIỆM CÁC BÊN
-{{responsibilities}}
-
-ĐIỀU 6: ĐIỀU KHOẢN KHÁC
-{{specialTerms}}
-
-Hợp đồng này có hiệu lực kể từ ngày ký và có giá trị pháp lý ràng buộc đối với các bên.
-
-                BÊN A                           BÊN B
-         {{partyA.representative}}      {{partyB.representative}}
-`,
-    fields: [
-      { key: 'contractNumber', label: 'Số hợp đồng', type: 'text', required: false },
-      { key: 'signDate', label: 'Ngày ký', type: 'date', required: true },
-      { key: 'signLocation', label: 'Nơi ký', type: 'text', required: false, default: 'Tp. Hồ Chí Minh' },
-      { key: 'description', label: 'Mô tả hàng hóa', type: 'textarea', required: true },
-      { key: 'contractValue', label: 'Giá trị hợp đồng', type: 'number', required: true },
-      { key: 'currency', label: 'Đơn vị tiền tệ', type: 'select', options: ['VND', 'USD', 'EUR'], required: true },
-      { key: 'paymentTerms', label: 'Điều kiện thanh toán', type: 'textarea', required: true },
-      { key: 'duration', label: 'Thời hạn (ngày)', type: 'number', required: false, default: '30' },
-      { key: 'responsibilities', label: 'Trách nhiệm các bên', type: 'textarea', required: false },
-      { key: 'specialTerms', label: 'Điều khoản đặc biệt', type: 'textarea', required: false }
-    ]
-  },
-  van_chuyen: {
-    title: 'HỢP ĐỒNG VẬN CHUYỂN',
-    content: `
-HỢP ĐỒNG VẬN CHUYỂN HÀNG HÓA
-Số: {{contractNumber}}
-
-BÊN THUÊ VẬN CHUYỂN: {{partyA.name}}
-BÊN NHẬN VẬN CHUYỂN: {{partyB.name}}
-
-THÔNG TIN VẬN CHUYỂN:
-- Loại hàng hóa: {{cargoType}}
-- Trọng lượng: {{weight}} {{weightUnit}}
-- Điểm đi: {{originLocation}}
-- Điểm đến: {{destinationLocation}}
-- Thời gian vận chuyển: {{transportDuration}} ngày
-
-GIÁ CƯỚC VẬN CHUYỂN: {{transportCost}} {{currency}}
-
-ĐIỀU KIỆN VẬN CHUYỂN:
-{{transportTerms}}
-`,
-    fields: [
-      { key: 'cargoType', label: 'Loại hàng hóa', type: 'text', required: true },
-      { key: 'weight', label: 'Trọng lượng', type: 'number', required: true },
-      { key: 'weightUnit', label: 'Đơn vị trọng lượng', type: 'select', options: ['kg', 'tấn', 'm³'], required: true },
-      { key: 'originLocation', label: 'Điểm đi', type: 'text', required: true },
-      { key: 'destinationLocation', label: 'Điểm đến', type: 'text', required: true },
-      { key: 'transportDuration', label: 'Thời gian vận chuyển (ngày)', type: 'number', required: true },
-      { key: 'transportCost', label: 'Cước vận chuyển', type: 'number', required: true },
-      { key: 'transportTerms', label: 'Điều kiện vận chuyển', type: 'textarea', required: false }
-    ]
+BÊN A                    BÊN B
+{{buyerName}}            {{sellerName}}
+    `
   }
 };
 
-// Chuyển số thành chữ (VND)
-const numberToWords = (num) => {
-  if (num === 0) return 'Không';
-  
-  const ones = ['', 'một', 'hai', 'ba', 'bốn', 'năm', 'sáu', 'bảy', 'tám', 'chín'];
-  const units = ['', 'nghìn', 'triệu', 'tỷ'];
-  
-  // Simplified version - chỉ support basic numbers
-  if (num < 1000) return `${ones[Math.floor(num)]} trăm`;
-  if (num < 1000000) return `${Math.floor(num/1000)} nghìn`;
-  if (num < 1000000000) return `${Math.floor(num/1000000)} triệu`;
-  return `${Math.floor(num/1000000000)} tỷ`;
+// Lấy template theo ID
+const getTemplate = (templateId) => {
+  return contractTemplates[templateId] || null;
 };
 
-// Replace các fields trong template
+// Lấy tất cả templates
+const getAllTemplates = () => {
+  return Object.keys(contractTemplates).map(id => ({
+    id,
+    title: contractTemplates[id].title
+  }));
+};
+
+// Thay thế các trường trong template
 const replaceTemplateFields = (template, data) => {
   let content = template.content;
   
-  // Replace simple fields
-  content = content.replace(/\{\{(\w+)\}\}/g, (match, key) => {
-    return data[key] || match;
+  // Thay thế tất cả các trường {{field}}
+  Object.keys(data).forEach(key => {
+    const regex = new RegExp(`{{${key}}}`, 'g');
+    content = content.replace(regex, data[key] || '');
   });
-  
-  // Replace nested fields (như partyA.name)
-  content = content.replace(/\{\{(\w+)\.(\w+)\}\}/g, (match, parent, child) => {
-    return (data[parent] && data[parent][child]) || match;
-  });
-  
-  // Auto-generate missing fields
-  if (!data.signDate) {
-    data.signDate = moment().format('DD/MM/YYYY');
-    content = content.replace(/\{\{signDate\}\}/g, data.signDate);
-  }
-  
-  if (!data.contractNumber) {
-    data.contractNumber = `HD-${moment().format('YYYYMMDD')}-${Math.floor(Math.random() * 1000)}`;
-    content = content.replace(/\{\{contractNumber\}\}/g, data.contractNumber);
-  }
-  
-  // Convert number to words for VND
-  if (data.contractValue && data.currency === 'VND') {
-    const words = numberToWords(parseFloat(data.contractValue));
-    content = content.replace(/\{\{contractValueInWords\}\}/g, `${words} đồng`);
-  }
   
   return content;
 };
 
-// Lấy template theo loại
-const getTemplate = (templateType) => {
-  return contractTemplates[templateType] || contractTemplates.mua_ban;
-};
-
-// Lấy danh sách tất cả templates
-const getAllTemplates = () => {
-  return Object.keys(contractTemplates).map(key => ({
-    id: key,
-    title: contractTemplates[key].title,
-    fieldCount: contractTemplates[key].fields.length
-  }));
-};
-
-// Generate document content
-const generateDocument = (templateType, data) => {
-  const template = getTemplate(templateType);
+// Tạo document từ template
+const generateDocument = (templateId, data) => {
+  const template = getTemplate(templateId);
+  if (!template) {
+    throw new Error('Template không tồn tại');
+  }
+  
   const content = replaceTemplateFields(template, data);
   
   return {
@@ -175,10 +100,381 @@ const generateDocument = (templateType, data) => {
   };
 };
 
+class TemplateService {
+  // Upload và lưu template
+  async uploadTemplate(file, templateData) {
+    try {
+      const { name, description, category } = templateData;
+      
+      // Xác định loại file
+      const fileExtension = path.extname(file.originalname).toLowerCase();
+      let fileType;
+      
+      switch (fileExtension) {
+        case '.docx':
+          fileType = 'docx';
+          break;
+        case '.pdf':
+          fileType = 'pdf';
+          break;
+        case '.xlsx':
+        case '.xls':
+          fileType = 'excel';
+          break;
+        default:
+          throw new Error('Loại file không được hỗ trợ. Chỉ chấp nhận .docx, .pdf, .xlsx, .xls');
+      }
+
+      // Tạo tên file unique
+      const timestamp = Date.now();
+      const uniqueFilename = `${timestamp}_${file.originalname}`;
+      const filePath = path.join(UPLOAD_DIR, uniqueFilename);
+
+      // Di chuyển file từ temp location
+      await fs.move(file.path, filePath);
+
+      // Đọc metadata của file
+      const metadata = await this.extractMetadata(filePath, fileType);
+
+      // Check if MongoDB is connected
+      const mongoose = require('mongoose');
+      if (mongoose.connection.readyState !== 1) {
+        // MongoDB not connected, return demo response
+        return {
+          _id: 'demo-' + Date.now(),
+          name,
+          description,
+          type: fileType,
+          category,
+          filename: uniqueFilename,
+          originalName: file.originalname,
+          fileSize: file.size,
+          uploadDate: new Date().toISOString(),
+          isActive: true,
+          metadata,
+          isDemoMode: true
+        };
+      }
+
+      // Lưu thông tin template vào database
+      const template = new Template({
+        name,
+        description,
+        type: fileType,
+        category,
+        filename: uniqueFilename,
+        originalName: file.originalname,
+        filePath,
+        fileSize: file.size,
+        metadata
+      });
+
+      await template.save();
+      return template;
+    } catch (error) {
+      // Cleanup file nếu có lỗi
+      if (file.path && await fs.pathExists(file.path)) {
+        await fs.remove(file.path);
+      }
+      throw error;
+    }
+  }
+
+  // Lấy danh sách templates
+  async getTemplates(filters = {}) {
+    try {
+      // Check if MongoDB is connected
+      const mongoose = require('mongoose');
+      if (mongoose.connection.readyState !== 1) {
+        // MongoDB not connected, return demo data
+        return this.getDemoTemplates(filters);
+      }
+
+      const query = { isActive: true };
+      
+      if (filters.category) {
+        query.category = filters.category;
+      }
+      
+      if (filters.type) {
+        query.type = filters.type;
+      }
+
+      // Set a short timeout for the query
+      const templates = await Template.find(query)
+        .sort({ uploadDate: -1 })
+        .select('-filePath')
+        .timeout(3000); // 3 second timeout
+
+      return templates;
+    } catch (error) {
+      // If any error (including timeout), return demo data
+      return this.getDemoTemplates(filters);
+    }
+  }
+
+  // Demo templates for development
+  getDemoTemplates(filters = {}) {
+    const demoTemplates = [
+      {
+        _id: 'demo1',
+        name: 'Hợp đồng nhập khẩu mẫu',
+        description: 'Template hợp đồng nhập khẩu chính ngạch',
+        type: 'docx',
+        category: 'contract',
+        originalName: 'hop-dong-nhap-khau.docx',
+        fileSize: 25600,
+        uploadDate: new Date().toISOString(),
+        isActive: true
+      },
+      {
+        _id: 'demo2',
+        name: 'Báo giá Excel mẫu',
+        description: 'Template báo giá hàng hóa nhập khẩu',
+        type: 'excel',
+        category: 'quote',
+        originalName: 'bao-gia-hang-hoa.xlsx',
+        fileSize: 15360,
+        uploadDate: new Date().toISOString(),
+        isActive: true
+      },
+      {
+        _id: 'demo3',
+        name: 'Tem nhãn sản phẩm',
+        description: 'Template tem nhãn cho sản phẩm nhập khẩu',
+        type: 'pdf',
+        category: 'label',
+        originalName: 'tem-nhan-san-pham.pdf',
+        fileSize: 8192,
+        uploadDate: new Date().toISOString(),
+        isActive: true
+      },
+      {
+        _id: 'demo4',
+        name: 'Phiếu thanh toán',
+        description: 'Template phiếu đề nghị thanh toán',
+        type: 'docx',
+        category: 'payment',
+        originalName: 'phieu-thanh-toan.docx',
+        fileSize: 12800,
+        uploadDate: new Date().toISOString(),
+        isActive: true
+      }
+    ];
+    
+    let filteredTemplates = demoTemplates;
+    if (filters.category) {
+      filteredTemplates = filteredTemplates.filter(t => t.category === filters.category);
+    }
+    if (filters.type) {
+      filteredTemplates = filteredTemplates.filter(t => t.type === filters.type);
+    }
+    
+    return filteredTemplates;
+  }
+
+  // Lấy template theo ID
+  async getTemplateById(id) {
+    try {
+      const template = await Template.findById(id);
+      if (!template || !template.isActive) {
+        throw new Error('Template không tồn tại');
+      }
+      return template;
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  // Đọc nội dung file template
+  async readTemplateContent(templateId) {
+    try {
+      const template = await this.getTemplateById(templateId);
+      const content = await this.readFileContent(template.filePath, template.type);
+      
+      return {
+        template,
+        content
+      };
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  // Xóa template
+  async deleteTemplate(id) {
+    try {
+      const template = await Template.findById(id);
+      if (!template) {
+        throw new Error('Template không tồn tại');
+      }
+
+      // Xóa file khỏi disk
+      if (await fs.pathExists(template.filePath)) {
+        await fs.remove(template.filePath);
+      }
+
+      // Đánh dấu là không hoạt động thay vì xóa hoàn toàn
+      template.isActive = false;
+      await template.save();
+
+      return { message: 'Đã xóa template thành công' };
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  // Đọc nội dung file dựa trên loại
+  async readFileContent(filePath, fileType) {
+    try {
+      switch (fileType) {
+        case 'docx':
+          return await this.readDocxContent(filePath);
+        case 'pdf':
+          return await this.readPdfContent(filePath);
+        case 'excel':
+          return await this.readExcelContent(filePath);
+        default:
+          throw new Error('Loại file không được hỗ trợ');
+      }
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  // Đọc file DOCX
+  async readDocxContent(filePath) {
+    try {
+      const result = await mammoth.extractRawText({ path: filePath });
+      return {
+        text: result.value,
+        type: 'docx',
+        messages: result.messages
+      };
+    } catch (error) {
+      throw new Error(`Lỗi đọc file DOCX: ${error.message}`);
+    }
+  }
+
+  // Đọc file PDF
+  async readPdfContent(filePath) {
+    try {
+      const dataBuffer = await fs.readFile(filePath);
+      const data = await pdfParse(dataBuffer);
+      
+      return {
+        text: data.text,
+        type: 'pdf',
+        pages: data.numpages,
+        info: data.info
+      };
+    } catch (error) {
+      throw new Error(`Lỗi đọc file PDF: ${error.message}`);
+    }
+  }
+
+  // Đọc file Excel
+  async readExcelContent(filePath) {
+    try {
+      const workbook = XLSX.readFile(filePath);
+      const sheets = {};
+      
+      workbook.SheetNames.forEach(sheetName => {
+        const worksheet = workbook.Sheets[sheetName];
+        sheets[sheetName] = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+      });
+
+      return {
+        sheets,
+        type: 'excel',
+        sheetNames: workbook.SheetNames
+      };
+    } catch (error) {
+      throw new Error(`Lỗi đọc file Excel: ${error.message}`);
+    }
+  }
+
+  // Trích xuất metadata từ file
+  async extractMetadata(filePath, fileType) {
+    try {
+      const stats = await fs.stat(filePath);
+      const metadata = {
+        createdAt: stats.birthtime,
+        modifiedAt: stats.mtime,
+        size: stats.size
+      };
+
+      // Thêm metadata specific cho từng loại file
+      switch (fileType) {
+        case 'excel':
+          const workbook = XLSX.readFile(filePath);
+          metadata.sheetNames = workbook.SheetNames;
+          metadata.sheetCount = workbook.SheetNames.length;
+          break;
+        case 'pdf':
+          try {
+            const dataBuffer = await fs.readFile(filePath);
+            const pdfData = await pdfParse(dataBuffer);
+            metadata.pages = pdfData.numpages;
+            metadata.info = pdfData.info;
+          } catch (err) {
+            // Ignore PDF parsing errors for metadata
+          }
+          break;
+      }
+
+      return metadata;
+    } catch (error) {
+      return {};
+    }
+  }
+
+  // Cập nhật thông tin template
+  async updateTemplate(id, updateData) {
+    try {
+      const template = await Template.findById(id);
+      if (!template || !template.isActive) {
+        throw new Error('Template không tồn tại');
+      }
+
+      // Chỉ cho phép cập nhật một số trường
+      const allowedFields = ['name', 'description'];
+      const updates = {};
+      
+      allowedFields.forEach(field => {
+        if (updateData[field] !== undefined) {
+          updates[field] = updateData[field];
+        }
+      });
+
+      Object.assign(template, updates);
+      await template.save();
+
+      return template;
+    } catch (error) {
+      throw error;
+    }
+  }
+}
+
+const templateServiceInstance = new TemplateService();
+
 module.exports = {
+  // Xuất các function cũ
   getTemplate,
   getAllTemplates,
   generateDocument,
   replaceTemplateFields,
-  contractTemplates
+  contractTemplates,
+  
+  // Xuất instance của class mới
+  templateService: templateServiceInstance,
+  
+  // Xuất các method của class
+  uploadTemplate: templateServiceInstance.uploadTemplate.bind(templateServiceInstance),
+  getTemplates: templateServiceInstance.getTemplates.bind(templateServiceInstance),
+  getTemplateById: templateServiceInstance.getTemplateById.bind(templateServiceInstance),
+  readTemplateContent: templateServiceInstance.readTemplateContent.bind(templateServiceInstance),
+  deleteTemplate: templateServiceInstance.deleteTemplate.bind(templateServiceInstance),
+  updateTemplate: templateServiceInstance.updateTemplate.bind(templateServiceInstance)
 }; 

@@ -2,6 +2,20 @@ const express = require('express');
 const router = express.Router();
 const paymentService = require('../services/paymentService');
 
+// @route   GET /api/payments
+// @desc    Test payments endpoint
+// @access  Public
+router.get('/', (req, res) => {
+  res.json({
+    success: true,
+    message: 'Payments API is working',
+    endpoints: [
+      'POST /api/payments/generate - Tạo phiếu thanh toán PDF',
+      'GET /api/payments/templates - Lấy mẫu phiếu'
+    ]
+  });
+});
+
 // @route   POST /api/payments/generate
 // @desc    Tạo phiếu thanh toán PDF
 // @access  Public

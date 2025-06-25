@@ -12,6 +12,7 @@
 - 📜 **Hợp đồng** - 4 mẫu chuẩn (mua bán, vận chuyển, bảo hiểm, đại lý)  
 - 🏷️ **Tem dán sản phẩm** - 5 loại theo ngành hàng, in PDF
 - 💰 **Phiếu thanh toán** - 4 hình thức thanh toán chuẩn
+- 📁 **Templates Management** - Upload, quản lý file mẫu DOCX/PDF/Excel
 
 ## 🚀 Demo Live
 
@@ -32,6 +33,7 @@
 - **MongoDB** + **Mongoose**
 - **PDFMake** - PDF generation (hỗ trợ tiếng Việt)
 - **Docxtemplater** - DOCX processing
+- **Multer** + **File Processing** - Upload & read DOCX/PDF/Excel
 - **Helmet** + **Rate Limiting** - Security
 
 ### Infrastructure
@@ -118,6 +120,14 @@ hotro.nhaphangchinhngach.vn/
 - ✅ Mẫu chuẩn kế toán
 - ✅ Tích hợp với hệ thống ERP
 
+### 📁 Templates Management
+- ✅ Upload file mẫu DOCX, PDF, Excel
+- ✅ Đọc và hiển thị nội dung file
+- ✅ Phân loại theo danh mục (Báo giá, Hợp đồng, Tem, Thanh toán)
+- ✅ Quản lý metadata và lịch sử upload
+- ✅ Lọc và tìm kiếm templates
+- ✅ Tích hợp với các chức năng khác
+
 ## 🚀 Deployment  
 
 ### Hướng dẫn chi tiết: **[📖 DEPLOYMENT.md](DEPLOYMENT.md)**
@@ -166,7 +176,9 @@ Distributed under the MIT License. See `LICENSE` for more information.
 ## 📞 Support
 
 - 🐛 **Issues**: [GitHub Issues](https://github.com/yourusername/hotro-nhaphang/issues)
-- 📖 **Documentation**: [DEPLOYMENT.md](DEPLOYMENT.md)
+- 📖 **Documentation**: 
+  - [DEPLOYMENT.md](DEPLOYMENT.md) - Hướng dẫn deploy
+  - [TEMPLATES_GUIDE.md](TEMPLATES_GUIDE.md) - Hướng dẫn Templates
 - 💬 **Contact**: admin@yourcompany.com
 
 ---

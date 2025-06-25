@@ -2,6 +2,20 @@ const express = require('express');
 const router = express.Router();
 const labelService = require('../services/labelService');
 
+// @route   GET /api/labels
+// @desc    Test labels endpoint
+// @access  Public
+router.get('/', (req, res) => {
+  res.json({
+    success: true,
+    message: 'Labels API is working',
+    endpoints: [
+      'POST /api/labels/generate - Tạo tem dán PDF',
+      'GET /api/labels/templates - Lấy mẫu tem'
+    ]
+  });
+});
+
 // @route   POST /api/labels/generate
 // @desc    Tạo tem dán sản phẩm PDF
 // @access  Public

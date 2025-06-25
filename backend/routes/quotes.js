@@ -2,6 +2,20 @@ const express = require('express');
 const router = express.Router();
 const quoteService = require('../services/quoteService');
 
+// @route   GET /api/quotes
+// @desc    Test quotes endpoint
+// @access  Public
+router.get('/', (req, res) => {
+  res.json({
+    success: true,
+    message: 'Quotes API is working',
+    endpoints: [
+      'POST /api/quotes/generate - Tạo báo giá PDF',
+      'GET /api/quotes/templates - Lấy mẫu báo giá'
+    ]
+  });
+});
+
 // @route   POST /api/quotes/generate
 // @desc    Tạo báo giá PDF
 // @access  Public

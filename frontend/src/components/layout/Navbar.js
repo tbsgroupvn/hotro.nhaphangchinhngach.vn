@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { FileText, Calculator, Tag, Receipt } from 'lucide-react';
+import { FileText, Calculator, Tag, Receipt, Folder } from 'lucide-react';
 
 const Navbar = () => {
   const location = useLocation();
@@ -11,6 +11,7 @@ const Navbar = () => {
     { path: '/contract', label: 'Hợp đồng', icon: FileText },
     { path: '/label', label: 'Tem dán', icon: Tag },
     { path: '/payment', label: 'Thanh toán', icon: Receipt },
+    { path: '/templates', label: 'Templates', icon: Folder },
   ];
 
   return (

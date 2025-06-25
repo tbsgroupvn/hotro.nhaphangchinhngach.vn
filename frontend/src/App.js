@@ -7,6 +7,7 @@ import QuotePage from './pages/QuotePage';
 import ContractPage from './pages/ContractPage';
 import LabelPage from './pages/LabelPage';
 import PaymentPage from './pages/PaymentPage';
+import TemplatesPage from './pages/TemplatesPage';
 
 function App() {
   return (
@@ -20,6 +21,7 @@ function App() {
             <Route path="/contract" element={<ContractPage />} />
             <Route path="/label" element={<LabelPage />} />
             <Route path="/payment" element={<PaymentPage />} />
+            <Route path="/templates" element={<TemplatesPage />} />
           </Routes>
         </main>
         <Toaster 

@@ -4,15 +4,24 @@ const helmet = require('helmet');
 const compression = require('compression');
 const rateLimit = require('express-rate-limit');
 const morgan = require('morgan');
+const fs = require('fs-extra');
+const path = require('path');
 require('dotenv').config();
 
 const connectDB = require('./config/database');
+
+// Tạo thư mục uploads nếu chưa tồn tại
+const uploadsDir = path.join(__dirname, 'uploads');
+const tempDir = path.join(__dirname, 'uploads/temp');
+fs.ensureDirSync(uploadsDir);
+fs.ensureDirSync(tempDir);
 
 // Import routes
 const quoteRoutes = require('./routes/quotes');
 const contractRoutes = require('./routes/contracts');
 const labelRoutes = require('./routes/labels');
 const paymentRoutes = require('./routes/payments');
+const templateRoutes = require('./routes/templates');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -63,6 +72,7 @@ app.use('/api/quotes', quoteRoutes);
 app.use('/api/contracts', contractRoutes);
 app.use('/api/labels', labelRoutes);
 app.use('/api/payments', paymentRoutes);
+app.use('/api/templates', templateRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {
